@@ -1,24 +1,99 @@
-import logo from './logo.svg';
-import './App.css';
+import { Form, Container, Button, Row, Col } from 'react-bootstrap';
+import CreatableSelect from 'react-select/creatable';
+import React, { useState } from 'react';
+import { v4 } from 'uuid'
+import { fileStore, metaDataStore } from './config/firebase';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { addDoc, collection } from 'firebase/firestore';
 
 function App() {
+
+  const [inOptions, setInOptions] = useState([]);
+  const [exOptions, setExOptions] = useState([]);
+  const [eventName, setEventName] = useState('');
+  const [eventPlace, setEventPlace] = useState('');
+  const [description, setDescriptions] = useState('');
+  const [eventDate, setEventDate] = useState(new Date());
+
+  const [disabled, setDisabled] = useState(true)
+
+  const [imgUrl, setImgUrl] = useState('');
+
+  const handleFileUpload = (e) => {
+
+    const imgs = ref(fileStore, `Imgs/${v4()}`)
+    uploadBytes(imgs, e.target.files[0]).then(data => {
+      getDownloadURL(data.ref).then(val => {
+
+        setImgUrl(val)
+        setDisabled(false)
+      })
+    }).catch(err => {
+      alert(err)
+    })
+  }
+
+  const onSubmitEvent = async () => {
+    const valRef = collection(metaDataStore, 'metaData')
+    try {
+      await addDoc(valRef, {
+        eventName,
+        place:eventPlace,
+        description,
+        include: JSON.stringify(inOptions),
+        exclude: JSON.stringify(exOptions),
+        eventDate: eventDate,
+        img: imgUrl
+      })
+      setEventName('')
+      setDescriptions('')
+      setExOptions([])
+      setInOptions([])
+      setImgUrl('')
+      setEventDate('')
+      setEventPlace('')
+      alert("Submission Succesfull")
+    } catch (error) {
+      alert(error)
+    }
+
+  }
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Container className='mt-4'>
+      <Form>
+        <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
+          <Form.Label>Name of the Event</Form.Label>
+          <Form.Control type="text" placeholder="Event Name" value={eventName} onChange={(e) => setEventName(e.target.value)} />
+        </Form.Group>
+        <Form.Group className="mb-3" controlId="exampleForm.ControlTextarea1">
+          <Form.Label>Event Place</Form.Label>
+          <Form.Control type="text" placeholder="Event Place" value={eventPlace} onChange={(e) => setEventPlace(e.target.value)} />
+        </Form.Group>
+        <Form.Group className="mb-3" controlId="exampleForm.ControlTextarea1">
+          <Form.Label>Event Description</Form.Label>
+          <Form.Control as="textarea" rows={6} value={description} onChange={(e) => setDescriptions(e.target.value)} />
+        </Form.Group>
+        <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
+          <Form.Label>Date of the Event</Form.Label>
+          <Form.Control type="date" placeholder="Event Date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+        </Form.Group>
+        <Form.Group className="mb-3">
+          <Form.Label>Inclusions</Form.Label>
+          <CreatableSelect isMulti onChange={(e) => setInOptions(e)} value={inOptions} options={inOptions} />
+        </Form.Group>
+        <Form.Group className="mb-3">
+          <Form.Label>Exclusions</Form.Label>
+          <CreatableSelect isMulti onChange={(e) => setExOptions(e)} value={exOptions}  options={exOptions} />
+        </Form.Group>
+        <Form.Group controlId="formFile" className="mb-3">
+          <Form.Label>Event Image</Form.Label>
+          <Form.Control type="file" onChange={handleFileUpload} />
+        </Form.Group>
+        <Form.Group className="mb-3">
+          <Button disabled={disabled} onClick={onSubmitEvent}>Submit</Button>
+        </Form.Group>
+      </Form>
+    </Container>
   );
 }
 
